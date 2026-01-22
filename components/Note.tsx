@@ -82,43 +82,32 @@ export default function Note({ note, onPositionUpdate, onDelete, onEdit }: NoteP
   return (
     <div
       ref={noteRef}
-      className={`absolute rounded-lg p-4 min-w-[250px] max-w-[400px] note-shadow transition-all ${
-        isDragging ? 'opacity-80 z-50' : 'hover:note-shadow-hover z-10'
+      className={`absolute p-4 min-w-[280px] max-w-[420px] bg-white border-2 border-gray-300 transition-all ${
+        isDragging ? 'opacity-90 z-50 shadow-lg' : 'hover:shadow-md z-10'
       }`}
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
-        backgroundColor: note.color,
-        border: `2px solid ${note.color === '#fff9c4' ? '#fdd835' : 'rgba(0,0,0,0.1)'}`,
+        backgroundColor: note.color || '#ffffff',
+        borderColor: note.color === '#fff9c4' ? '#fdd835' : (note.color === '#ffffff' ? '#d1d5db' : note.color),
         cursor: isDragging ? 'grabbing' : 'grab',
       }}
       onMouseDown={handleMouseDown}
     >
-      <div className="flex justify-between items-start mb-2 pb-2 border-b border-gray-200">
+      {/* Header */}
+      <div className="flex justify-between items-start mb-3">
         <div className="flex-1">
-          <div className="font-bold text-lg text-gray-800">{note.name}</div>
+          <div className="font-bold text-xl text-gray-900 mb-1" style={{ fontFamily: 'inherit' }}>
+            {note.name}
+          </div>
           {note.title && (
-            <div className="text-sm text-gray-600 italic">{note.title}</div>
-          )}
-          {(note.category || (note.tags && note.tags.length > 0)) && (
-            <div className="flex gap-2 mt-1 flex-wrap">
-              {note.category && (
-                <span className="text-xs px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full">
-                  {note.category}
-                </span>
-              )}
-              {note.tags && note.tags.map((tag, idx) => (
-                <span key={idx} className="text-xs px-2 py-0.5 bg-gray-200 text-gray-700 rounded-full">
-                  #{tag}
-                </span>
-              ))}
-            </div>
+            <div className="text-sm text-gray-600 mb-2">{note.title}</div>
           )}
         </div>
-        <div className="flex gap-1 ml-2">
+        <div className="flex gap-1 ml-3">
           {onEdit && (
             <button
-              className="note-edit w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-blue-600 transition-all hover:scale-110"
+              className="note-edit w-6 h-6 flex items-center justify-center text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
               onClick={(e) => {
                 e.stopPropagation()
                 onEdit()
@@ -129,7 +118,7 @@ export default function Note({ note, onPositionUpdate, onDelete, onEdit }: NoteP
             </button>
           )}
           <button
-            className="note-delete w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-600 transition-all hover:scale-110"
+            className="note-delete w-6 h-6 flex items-center justify-center text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
             onClick={(e) => {
               e.stopPropagation()
               onDelete(note.id)
@@ -140,31 +129,44 @@ export default function Note({ note, onPositionUpdate, onDelete, onEdit }: NoteP
           </button>
         </div>
       </div>
-      <div className="text-gray-700 whitespace-pre-wrap break-words mb-2">
+
+      {/* Content */}
+      <div className="text-gray-800 whitespace-pre-wrap break-words mb-3 leading-relaxed">
         {note.content}
       </div>
+
+      {/* Links */}
       {note.links.length > 0 && (
-        <div className="mt-2 pt-2 border-t border-gray-200">
+        <div className="mt-3 pt-3 border-t border-gray-200">
           {note.links.map((link, index) => (
             <a
               key={index}
               href={link}
               target="_blank"
               rel="noopener noreferrer"
-              className="block text-indigo-600 text-sm mb-1 hover:underline break-all"
+              className="block text-blue-600 text-sm mb-1.5 hover:underline break-all"
             >
               {link}
             </a>
           ))}
         </div>
       )}
-      <div className="mt-2 pt-2 border-t border-gray-200 text-xs text-gray-500">
-        {note.updatedAt ? (
-          <>Updated: {new Date(note.updatedAt).toLocaleString()}</>
-        ) : (
-          <>Created: {new Date(note.createdAt).toLocaleString()}</>
-        )}
-      </div>
+
+      {/* Tags/Category - Minimal */}
+      {(note.category || (note.tags && note.tags.length > 0)) && (
+        <div className="flex gap-1.5 mt-3 flex-wrap">
+          {note.category && note.category !== 'general' && (
+            <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600">
+              {note.category}
+            </span>
+          )}
+          {note.tags && note.tags.slice(0, 3).map((tag, idx) => (
+            <span key={idx} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600">
+              #{tag}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

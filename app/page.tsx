@@ -169,115 +169,102 @@ export default function Home() {
   })
 
   return (
-    <div className="min-h-screen p-5">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <header className="bg-white rounded-xl shadow-lg p-6 mb-5">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            📋 Company Meeting Whiteboard
-          </h1>
-          <p className="text-gray-600 mb-4">
-            Share your thoughts and what you're working on!
-          </p>
-          {/* Search and Filter */}
-          <div className="mb-4 flex gap-3 flex-wrap">
-            <div className="flex-1 min-w-[200px]">
-              <input
-                type="text"
-                placeholder="🔍 Search notes..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500 transition-colors"
-              />
-            </div>
+    <div className="h-screen flex flex-col bg-white">
+      {/* Minimal Toolbar */}
+      <div className="border-b border-gray-200 bg-white px-4 py-2 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <h1 className="text-lg font-semibold text-gray-800">Company Whiteboard</h1>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+            />
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500 transition-colors"
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
             >
               {categories.map(cat => (
                 <option key={cat} value={cat}>
-                  {cat === 'all' ? 'All Categories' : cat}
+                  {cat === 'all' ? 'All' : cat}
                 </option>
               ))}
             </select>
           </div>
-          <div className="flex gap-3 flex-wrap">
-            <button
-              onClick={() => {
-                setEditingNote(null)
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setEditingNote(null)
+              setIsModalOpen(true)
+            }}
+            className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+          >
+            + Add Note
+          </button>
+          <button
+            onClick={exportNotes}
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+            title="Export"
+          >
+            💾
+          </button>
+          <button
+            onClick={clearAll}
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+            title="Clear All"
+          >
+            🗑️
+          </button>
+        </div>
+      </div>
+
+      {/* Whiteboard Canvas */}
+      <div className="flex-1 relative overflow-hidden bg-white whiteboard-grid">
+        {notes.length === 0 ? (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center text-gray-400">
+              <h2 className="text-2xl font-semibold mb-2">Put yours anywhere! 🎨</h2>
+              <p>Click "+ Add Note" to share your thoughts, work updates, or links</p>
+            </div>
+          </div>
+        ) : filteredNotes.length === 0 ? (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center text-gray-400">
+              <h2 className="text-xl font-semibold mb-2">No notes found</h2>
+              <p className="text-sm">Try adjusting your search or filter</p>
+            </div>
+          </div>
+        ) : (
+          filteredNotes.map((note) => (
+            <Note
+              key={note.id}
+              note={note}
+              onPositionUpdate={updateNotePosition}
+              onDelete={deleteNote}
+              onEdit={() => {
+                setEditingNote(note)
                 setIsModalOpen(true)
               }}
-              className="px-5 py-2.5 bg-indigo-500 text-white rounded-lg font-medium hover:bg-indigo-600 transition-all hover:-translate-y-0.5 hover:shadow-lg"
-            >
-              + Add Your Note
-            </button>
-            <button
-              onClick={clearAll}
-              className="px-5 py-2.5 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300 transition-all"
-            >
-              Clear All
-            </button>
-            <button
-              onClick={exportNotes}
-              className="px-5 py-2.5 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300 transition-all"
-            >
-              Export JSON
-            </button>
-            <button
-              onClick={exportAsText}
-              className="px-5 py-2.5 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300 transition-all"
-            >
-              Export Text
-            </button>
-          </div>
-          {filteredNotes.length !== notes.length && (
-            <p className="text-sm text-gray-500 mt-2">
-              Showing {filteredNotes.length} of {notes.length} notes
-            </p>
-          )}
-        </header>
-
-        {/* Whiteboard */}
-        <div className="bg-gray-100 rounded-xl shadow-lg p-8 min-h-[600px] relative overflow-hidden">
-          {notes.length === 0 ? (
-            <div className="text-center text-gray-500 py-40">
-              <h2 className="text-2xl font-semibold mb-2">Put yours anywhere! 🎨</h2>
-              <p>Click "Add Your Note" to share your thoughts, work updates, or links</p>
-            </div>
-          ) : filteredNotes.length === 0 ? (
-            <div className="text-center text-gray-500 py-40">
-              <h2 className="text-2xl font-semibold mb-2">No notes found</h2>
-              <p>Try adjusting your search or filter criteria</p>
-            </div>
-          ) : (
-            filteredNotes.map((note) => (
-              <Note
-                key={note.id}
-                note={note}
-                onPositionUpdate={updateNotePosition}
-                onDelete={deleteNote}
-                onEdit={() => {
-                  setEditingNote(note)
-                  setIsModalOpen(true)
-                }}
-              />
-            ))
-          )}
-        </div>
-
-        {/* Modal */}
-        <NoteModal
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false)
-            setEditingNote(null)
-          }}
-          onAdd={addNote}
-          onUpdate={updateNote}
-          editingNote={editingNote}
-        />
+            />
+          ))
+        )}
       </div>
+
+      {/* Modal */}
+      <NoteModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false)
+          setEditingNote(null)
+        }}
+        onAdd={addNote}
+        onUpdate={updateNote}
+        editingNote={editingNote}
+      />
     </div>
   )
 }

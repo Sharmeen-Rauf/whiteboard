@@ -17,7 +17,7 @@ export default function NoteModal({ isOpen, onClose, onAdd, onUpdate, editingNot
     title: '',
     content: '',
     links: '',
-    color: '#fff9c4',
+    color: '#ffffff',
     category: 'general',
     tags: '',
   })
@@ -42,7 +42,7 @@ export default function NoteModal({ isOpen, onClose, onAdd, onUpdate, editingNot
           title: '',
           content: '',
           links: '',
-          color: '#fff9c4',
+          color: '#ffffff',
           category: 'general',
           tags: '',
         })
@@ -94,11 +94,11 @@ export default function NoteModal({ isOpen, onClose, onAdd, onUpdate, editingNot
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl relative animate-slideDown"
+        className="bg-white border-2 border-gray-300 p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl relative"
         onClick={(e) => e.stopPropagation()}
       >
         <button

@@ -10,8 +10,9 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #f5f5f5;
   min-height: 100vh;
+  overflow: hidden;
 }
 
 @layer utilities {
@@ -21,5 +22,12 @@ body {
   
   .note-shadow-hover {
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .whiteboard-grid {
+    background-image: 
+      linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
   }
 }
