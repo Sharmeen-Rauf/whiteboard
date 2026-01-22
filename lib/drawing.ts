@@ -1,4 +1,4 @@
-import { fabric } from 'fabric'
+import fabric from 'fabric'
 import type { Canvas as FabricCanvas, Object as FabricObject } from 'fabric'
 
 export type DrawingTool = 

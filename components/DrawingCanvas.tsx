@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { fabric } from 'fabric'
+import fabric from 'fabric'
 import { DrawingTool, DrawingState, createCanvas, setupTool, drawShape } from '@/lib/drawing'
 import { io, Socket } from 'socket.io-client'
 import type { Canvas as FabricCanvas } from 'fabric'
