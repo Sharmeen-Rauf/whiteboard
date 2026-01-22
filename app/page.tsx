@@ -24,10 +24,6 @@ export default function Home() {
   const [editingNote, setEditingNote] = useState<NoteData | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
-  const [editingNote, setEditingNote] = useState<NoteData | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<string>('all')
-  const [selectedTag, setSelectedTag] = useState<string>('all')
 
   useEffect(() => {
     loadNotes()
