@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import NoteModal from '@/components/NoteModal'
 import Note from '@/components/Note'
 
@@ -19,11 +20,17 @@ export interface NoteData {
 }
 
 export default function Home() {
+  const router = useRouter()
   const [notes, setNotes] = useState<NoteData[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingNote, setEditingNote] = useState<NoteData | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  
+  const createDrawingBoard = () => {
+    const roomId = `room_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    router.push(`/whiteboard/${roomId}`)
+  }
 
   useEffect(() => {
     loadNotes()
@@ -196,6 +203,12 @@ export default function Home() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={createDrawingBoard}
+            className="px-3 py-1.5 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition-colors font-medium"
+          >
+            🎨 Drawing Board
+          </button>
           <button
             onClick={() => {
               setEditingNote(null)

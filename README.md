@@ -1,24 +1,43 @@
-# Company Meeting Whiteboard - Next.js
+# Company Whiteboard - Collaborative Drawing Board
 
-A modern, collaborative whiteboard application built with Next.js, React, and TypeScript for companies to share thoughts, work updates, and meeting notes.
+A real-time collaborative whiteboard application built with Next.js, Fabric.js, and Socket.io. Employees can draw, write, and collaborate in real-time on shared or private whiteboards.
 
 ## Features
 
-- ✅ **Add Notes**: Share your name, role, what you're working on, and links
-- ✅ **Drag & Drop**: Move notes anywhere on the whiteboard
-- ✅ **Persistent Storage**: Notes are saved in browser localStorage
-- ✅ **Export**: Download all notes as JSON
-- ✅ **Modern UI**: Built with Tailwind CSS and React
-- ✅ **TypeScript**: Fully typed for better development experience
-- ✅ **Customizable Colors**: Choose colors for your notes
-- ✅ **Responsive Design**: Works on desktop and mobile
+### 🎨 Drawing Tools
+- **Select Tool** - Move and modify objects
+- **Rectangle** - Draw rectangles
+- **Circle** - Draw circles
+- **Triangle** - Draw triangles
+- **Line** - Draw straight lines
+- **Arrow** - Draw arrows
+- **Text** - Add editable text
+- **Freehand Drawing** - Draw freely with pencil/brush
+- **Color Picker** - Choose stroke and fill colors
+- **Stroke Width** - Adjust line thickness
+- **Font Size** - Adjust text size
+
+### 👥 Real-Time Collaboration
+- **Live Updates** - See what others are drawing in real-time
+- **User Presence** - See who's currently in the room
+- **Multi-User Support** - Multiple employees can draw simultaneously
+- **Private Boards** - Option to create private boards (only you can see)
+- **Public Boards** - Share room ID for team collaboration
+
+### 📝 Note System (Original)
+- Add text notes with links
+- Drag and drop notes
+- Search and filter
+- Categories and tags
+- Export functionality
 
 ## Tech Stack
 
 - **Next.js 14** - React framework
 - **TypeScript** - Type safety
+- **Fabric.js** - Canvas drawing library
+- **Socket.io** - Real-time WebSocket communication
 - **Tailwind CSS** - Styling
-- **React Hooks** - State management
 
 ## Getting Started
 
@@ -29,83 +48,145 @@ A modern, collaborative whiteboard application built with Next.js, React, and Ty
 
 ### Installation
 
-1. Install dependencies:
+1. **Install dependencies:**
 ```bash
 npm install
-# or
-yarn install
 ```
 
-2. Run the development server:
+2. **Set up environment variables:**
+Create a `.env.local` file:
+```env
+NEXT_PUBLIC_SOCKET_URL=http://localhost:3001
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+3. **Start the development servers:**
+
+**Option 1: Run both servers separately (recommended for development)**
+
+Terminal 1 - Next.js app:
 ```bash
 npm run dev
-# or
-yarn dev
 ```
 
-3. Open [http://localhost:3000](http://localhost:3000) in your browser
-
-### Build for Production
-
+Terminal 2 - Socket.io server:
 ```bash
-npm run build
-npm start
+npm run server
 ```
 
-## How to Use
+**Option 2: Use concurrently (if installed):**
+```bash
+npm run dev:all
+```
 
-1. Click "Add Your Note" to add a new note
-2. Fill in your information:
-   - Your name (required)
-   - Title/Role (optional)
-   - What you're working on / Thoughts (required)
-   - Links (one per line, optional)
-   - Note color (optional)
-3. Drag notes around the whiteboard to organize them
-4. Click the × button to delete a note
-5. Use "Export" to download all notes as JSON
+4. **Open the application:**
+- Next.js app: [http://localhost:3000](http://localhost:3000)
+- Socket.io server: [http://localhost:3001](http://localhost:3001)
+
+## Usage
+
+### Creating a Drawing Board
+
+1. Click the **"🎨 Drawing Board"** button on the main page
+2. Enter your name when prompted
+3. Choose if you want a private board (only you) or public (shareable)
+4. Start drawing!
+
+### Sharing a Board
+
+1. Copy the room ID from the URL (e.g., `/whiteboard/room_123456`)
+2. Share the full URL with your team
+3. Everyone who joins will see the same whiteboard in real-time
+
+### Drawing Tools
+
+- **Select Tool**: Click and drag to move objects, resize, or modify
+- **Shapes**: Click and drag to draw rectangles, circles, triangles
+- **Line/Arrow**: Click start point, drag to end point
+- **Text**: Click where you want text, double-click to edit
+- **Freehand**: Click and drag to draw freely
+- **Colors**: Use color pickers to change stroke and fill colors
+- **Width**: Adjust slider to change line thickness
+
+### Private vs Public Boards
+
+- **Public Board**: Anyone with the room URL can join and collaborate
+- **Private Board**: Only you can see and edit (others can't join even with the URL)
 
 ## Project Structure
 
 ```
 .
 ├── app/
-│   ├── layout.tsx      # Root layout
-│   ├── page.tsx        # Main whiteboard page
-│   └── globals.css     # Global styles
+│   ├── page.tsx              # Main page with notes
+│   ├── whiteboard/
+│   │   └── [roomId]/
+│   │       └── page.tsx      # Drawing board page
+│   └── globals.css           # Global styles
 ├── components/
-│   ├── Note.tsx        # Note component with drag & drop
-│   └── NoteModal.tsx   # Modal for adding/editing notes
-├── package.json
-├── tailwind.config.js
-└── tsconfig.json
+│   ├── DrawingCanvas.tsx     # Canvas component with Fabric.js
+│   ├── DrawingToolbar.tsx    # Toolbar with all drawing tools
+│   ├── Note.tsx              # Note component
+│   └── NoteModal.tsx         # Modal for adding notes
+├── lib/
+│   └── drawing.ts            # Drawing utilities
+├── server.js                 # Socket.io server
+└── package.json
 ```
 
 ## Deployment
 
 ### Vercel (Recommended)
 
-1. Push your code to GitHub
-2. Import your repository on [Vercel](https://vercel.com)
-3. Deploy with one click
+1. **Deploy Next.js app to Vercel:**
+   - Push code to GitHub
+   - Import repository on Vercel
+   - Add environment variables in Vercel dashboard
 
-### Other Platforms
+2. **Deploy Socket.io server:**
+   - Deploy `server.js` to a Node.js hosting service (Railway, Render, Heroku, etc.)
+   - Update `NEXT_PUBLIC_SOCKET_URL` in Vercel to point to your Socket.io server
 
-- **Netlify**: Connect your GitHub repo
-- **AWS Amplify**: Follow Next.js deployment guide
-- **Docker**: Build and deploy as container
+### Environment Variables for Production
+
+```env
+NEXT_PUBLIC_SOCKET_URL=https://your-socket-server.com
+NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
+PORT=3001
+```
+
+## Development
+
+### Running Tests
+
+```bash
+npm run lint
+```
+
+### Building for Production
+
+```bash
+npm run build
+npm start
+```
 
 ## Future Enhancements
 
-- Real-time collaboration (WebSockets/Socket.io)
-- User authentication
-- Cloud storage (database integration)
-- Image uploads
-- QR code generation
-- Print/PDF export
-- Multiple whiteboards/rooms
-- Comments and reactions on notes
+- [ ] Image upload support
+- [ ] Undo/Redo functionality
+- [ ] Zoom and pan controls
+- [ ] Export as PDF
+- [ ] Board templates
+- [ ] User authentication
+- [ ] Persistent board storage
+- [ ] Comments and annotations
+- [ ] Video/audio chat integration
+- [ ] Mobile touch support
 
 ## License
 
 MIT
+
+## Support
+
+For issues or questions, please open an issue on GitHub.
