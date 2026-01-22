@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { fabric } from 'fabric'
 import { DrawingTool, DrawingState, createCanvas, setupTool, drawShape } from '@/lib/drawing'
 import { io, Socket } from 'socket.io-client'
+import type { Canvas as FabricCanvas } from 'fabric'
 
 interface DrawingCanvasProps {
   roomId: string
@@ -23,7 +24,7 @@ export default function DrawingCanvas({
   onClear,
 }: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const fabricCanvasRef = useRef<fabric.Canvas | null>(null)
+  const fabricCanvasRef = useRef<FabricCanvas | null>(null)
   const socketRef = useRef<Socket | null>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [startPos, setStartPos] = useState({ x: 0, y: 0 })

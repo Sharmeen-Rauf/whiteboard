@@ -1,4 +1,5 @@
 import { fabric } from 'fabric'
+import type { Canvas as FabricCanvas, Object as FabricObject } from 'fabric'
 
 export type DrawingTool = 
   | 'select'
@@ -19,7 +20,7 @@ export interface DrawingState {
   fontSize: number
 }
 
-export const createCanvas = (element: HTMLCanvasElement) => {
+export const createCanvas = (element: HTMLCanvasElement): FabricCanvas => {
   return new fabric.Canvas(element, {
     width: typeof window !== 'undefined' ? window.innerWidth : 1200,
     height: typeof window !== 'undefined' ? window.innerHeight - 60 : 800,
@@ -28,7 +29,7 @@ export const createCanvas = (element: HTMLCanvasElement) => {
 }
 
 export const setupTool = (
-  canvas: fabric.Canvas,
+  canvas: FabricCanvas,
   tool: DrawingTool,
   state: DrawingState
 ) => {
@@ -51,7 +52,7 @@ export const setupTool = (
 }
 
 export const drawShape = (
-  canvas: fabric.Canvas,
+  canvas: FabricCanvas,
   tool: DrawingTool,
   state: DrawingState,
   startX: number,
@@ -59,7 +60,7 @@ export const drawShape = (
   endX: number,
   endY: number
 ) => {
-  let shape: fabric.Object | null = null
+  let shape: FabricObject | null = null
 
   const left = Math.min(startX, endX)
   const top = Math.min(startY, endY)

@@ -1,7 +1,7 @@
 declare module 'fabric' {
   export interface IEvent {
     e: MouseEvent | TouchEvent
-    target?: Object
+    target?: FabricObject
     path?: Path
   }
 
@@ -26,6 +26,13 @@ declare module 'fabric' {
     text?: string
     fontSize?: number
     fontFamily?: string
+  }
+
+  export interface ICanvasOptions {
+    width?: number
+    height?: number
+    backgroundColor?: string
+    [key: string]: any
   }
 
   export class FabricObject {
@@ -90,13 +97,6 @@ declare module 'fabric' {
     constructor(canvas: Canvas)
   }
 
-  export interface ICanvasOptions {
-    width?: number
-    height?: number
-    backgroundColor?: string
-    [key: string]: any
-  }
-
   export class Canvas {
     width: number
     height: number
@@ -130,7 +130,7 @@ declare module 'fabric' {
     ): void
   }
 
-  export const fabric: {
+  export interface FabricNamespace {
     Canvas: typeof Canvas
     Rect: typeof Rect
     Circle: typeof Circle
@@ -143,6 +143,11 @@ declare module 'fabric' {
     util: typeof util
     Object: typeof Object
   }
+
+  const fabric: FabricNamespace
+
+  // Export types for use in other files
+  export type { Canvas, Object, Rect, Circle, Triangle, Line, IText, Path, Polygon, PencilBrush, IEvent, IObjectOptions, ITextOptions, ICanvasOptions }
 
   export default fabric
 }
