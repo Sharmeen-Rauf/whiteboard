@@ -9,7 +9,7 @@ const io = new Server(server, {
   },
 })
 
-const rooms = new Map() // roomId -> { users: Set, canvasState: [] }
+const rooms = new Map() // roomId -> { users: Set, excalidrawState: { elements, appState, files } }
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id)
@@ -20,43 +20,72 @@ io.on('connection', (socket) => {
     if (!rooms.has(roomId)) {
       rooms.set(roomId, {
         users: new Set(),
-        canvasState: [],
+        excalidrawState: {
+          elements: [],
+          appState: {},
+          files: {},
+        },
         isPrivate: isPrivate === 'true',
       })
     }
 
     const room = rooms.get(roomId)
-    room.users.add(userName || socket.id)
+    const userKey = userName || socket.id
+    room.users.add(userKey)
     
-    // Send current canvas state to new user
-    socket.emit('canvas-state', room.canvasState)
+    // Send current Excalidraw state to new user
+    if (room.excalidrawState.elements.length > 0) {
+      socket.emit('excalidraw-state', room.excalidrawState)
+    }
     
     // Notify others
     socket.to(roomId).emit('user-joined', Array.from(room.users))
     socket.emit('user-joined', Array.from(room.users))
     
-    console.log(`${userName || socket.id} joined room ${roomId}`)
+    console.log(`${userKey} joined room ${roomId}`)
   })
 
+  socket.on('excalidraw-change', ({ roomId, elements, appState, files }) => {
+    const room = rooms.get(roomId)
+    if (!room || room.isPrivate) return
+
+    // Update room state
+    room.excalidrawState = {
+      elements: elements || [],
+      appState: appState || {},
+      files: files || {},
+    }
+
+    // Broadcast to all other users in the room
+    socket.to(roomId).emit('excalidraw-update', {
+      elements,
+      appState,
+      files,
+    })
+  })
+
+  // Legacy support for old drawing actions (if needed)
   socket.on('drawing-action', ({ type, object, objectId, properties, roomId }) => {
     const room = rooms.get(roomId)
     if (!room) return
 
     if (type === 'add' && object) {
       object.id = objectId || `obj_${Date.now()}_${Math.random()}`
-      room.canvasState.push(object)
+      if (!room.excalidrawState) {
+        room.excalidrawState = { elements: [], appState: {}, files: {} }
+      }
+      room.excalidrawState.elements.push(object)
     } else if (type === 'modify' && objectId) {
-      const index = room.canvasState.findIndex((obj) => obj.id === objectId)
-      if (index !== -1) {
-        room.canvasState[index] = { ...room.canvasState[index], ...properties }
+      const index = room.excalidrawState?.elements?.findIndex((obj) => obj.id === objectId)
+      if (index !== -1 && index !== undefined) {
+        room.excalidrawState.elements[index] = { ...room.excalidrawState.elements[index], ...properties }
       }
     } else if (type === 'remove' && objectId) {
-      room.canvasState = room.canvasState.filter((obj) => obj.id !== objectId)
+      room.excalidrawState.elements = room.excalidrawState.elements.filter((obj) => obj.id !== objectId)
     } else if (type === 'clear') {
-      room.canvasState = []
+      room.excalidrawState.elements = []
     }
 
-    // Broadcast to all users in room except sender
     socket.to(roomId).emit('drawing-update', { type, object, objectId, properties })
   })
 
@@ -65,8 +94,9 @@ io.on('connection', (socket) => {
     
     // Remove user from all rooms
     rooms.forEach((room, roomId) => {
-      if (room.users.has(socket.id)) {
-        room.users.delete(socket.id)
+      const userToRemove = Array.from(room.users).find(user => user === socket.id)
+      if (userToRemove) {
+        room.users.delete(userToRemove)
         io.to(roomId).emit('user-left', Array.from(room.users))
       }
     })
