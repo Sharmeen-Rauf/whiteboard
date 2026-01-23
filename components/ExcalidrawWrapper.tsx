@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { io, Socket } from 'socket.io-client'
 import type { 
   ExcalidrawImperativeAPI,
@@ -65,6 +65,20 @@ export default function ExcalidrawWrapper({
   const socketRef = useRef<Socket | null>(null)
   const isLocalChangeRef = useRef(false)
   const changeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Helper function to sanitize appState (remove non-serializable properties)
+  const sanitizeAppState = useCallback((appState: AppState): Partial<AppState> => {
+    const sanitized = { ...appState }
+    // Remove collaborators as it's a Map and causes issues when serialized
+    if ('collaborators' in sanitized) {
+      delete (sanitized as any).collaborators
+    }
+    // Remove other non-serializable properties if any
+    if ('socket' in sanitized) {
+      delete (sanitized as any).socket
+    }
+    return sanitized
+  }, [])
 
   useEffect(() => {
     // Set asset path for Excalidraw
@@ -148,7 +162,7 @@ export default function ExcalidrawWrapper({
       })
 
       // Receive updates from other users
-      socket.on('excalidraw-update', (data: { elements: any[], appState: AppState, files: BinaryFiles }) => {
+      socket.on('excalidraw-update', (data: { elements: any[], appState: any, files: BinaryFiles }) => {
         if (!excalidrawAPI) {
           console.warn('Excalidraw API not ready, skipping update')
           return
@@ -162,9 +176,13 @@ export default function ExcalidrawWrapper({
 
         try {
           console.log('📥 Received remote update:', data.elements?.length || 0, 'elements')
+          
+          // Sanitize appState to remove collaborators if present
+          const sanitizedAppState = data.appState ? sanitizeAppState(data.appState as AppState) : {}
+          
           excalidrawAPI.updateScene({
             elements: data.elements || [],
-            appState: data.appState || {},
+            appState: sanitizedAppState,
           })
 
           // Handle files if needed
@@ -185,13 +203,16 @@ export default function ExcalidrawWrapper({
       })
 
       // Receive initial canvas state
-      socket.on('excalidraw-state', (data: { elements: any[], appState: AppState, files: BinaryFiles }) => {
+      socket.on('excalidraw-state', (data: { elements: any[], appState: any, files: BinaryFiles }) => {
         if (!excalidrawAPI) return
 
         try {
+          // Sanitize appState to remove collaborators if present
+          const sanitizedAppState = data.appState ? sanitizeAppState(data.appState as AppState) : {}
+          
           excalidrawAPI.updateScene({
             elements: data.elements || [],
-            appState: data.appState || {},
+            appState: sanitizedAppState,
           })
 
           if (data.files && Object.keys(data.files).length > 0) {
@@ -224,18 +245,21 @@ export default function ExcalidrawWrapper({
       setConnectionStatus('disconnected')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId, userName, isPrivate])
+  }, [roomId, userName, isPrivate, sanitizeAppState])
 
   const handleChange = (
     elements: readonly any[],
     appState: AppState,
     files: BinaryFiles
   ) => {
+    // Sanitize appState before saving/sending
+    const sanitizedAppState = sanitizeAppState(appState)
+    
     // Save to localStorage for persistence
     if (typeof window !== 'undefined') {
       const data = {
         elements: Array.from(elements),
-        appState,
+        appState: sanitizedAppState,
         files,
         version: 2,
         type: 'excalidraw',
@@ -261,7 +285,7 @@ export default function ExcalidrawWrapper({
           socketRef.current.emit('excalidraw-change', {
             roomId,
             elements: Array.from(elements),
-            appState,
+            appState: sanitizedAppState,
             files,
           })
           
@@ -283,9 +307,12 @@ export default function ExcalidrawWrapper({
       if (saved) {
         const data = JSON.parse(saved)
         if (data.elements && data.appState) {
+          // Sanitize appState to remove collaborators if present
+          const sanitizedAppState = sanitizeAppState(data.appState as AppState)
+          
           excalidrawAPI.updateScene({
             elements: data.elements,
-            appState: data.appState,
+            appState: sanitizedAppState,
           })
           
           // Restore files if they exist
@@ -305,7 +332,7 @@ export default function ExcalidrawWrapper({
     } catch (error) {
       console.error('Error loading saved data:', error)
     }
-  }, [excalidrawAPI, roomId, isReady])
+  }, [excalidrawAPI, roomId, isReady, sanitizeAppState])
 
   if (!isReady) {
     return (
