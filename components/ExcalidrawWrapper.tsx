@@ -6,6 +6,7 @@ import type {
   ExcalidrawImperativeAPI,
   AppState,
   BinaryFiles,
+  BinaryFileData,
 } from '@excalidraw/excalidraw/types'
 
 // Import Excalidraw CSS
@@ -73,8 +74,20 @@ export default function ExcalidrawWrapper({
           excalidrawAPI.updateScene({
             elements: data.elements,
             appState: data.appState,
-            files: data.files,
           })
+          
+          // Restore files if they exist
+          if (data.files && Object.keys(data.files).length > 0) {
+            const fileData: BinaryFileData[] = Object.values(data.files).map((file: any) => ({
+              mimeType: file.mimeType,
+              id: file.id,
+              dataURL: file.dataURL,
+              created: file.created || Date.now(),
+            }))
+            if (fileData.length > 0) {
+              excalidrawAPI.addFiles(fileData)
+            }
+          }
         }
       }
     } catch (error) {
