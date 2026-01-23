@@ -38,6 +38,7 @@ export default function ExcalidrawWrapper({
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected')
   const socketRef = useRef<Socket | null>(null)
   const isLocalChangeRef = useRef(false)
+  const changeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     // Set asset path for Excalidraw
@@ -58,29 +59,47 @@ export default function ExcalidrawWrapper({
 
     try {
       setConnectionStatus('connecting')
-      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001'
+      let socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001'
+      
+      // Ensure URL has proper protocol
+      if (socketUrl && !socketUrl.startsWith('http://') && !socketUrl.startsWith('https://')) {
+        socketUrl = `https://${socketUrl}`
+      }
+      
+      console.log('Connecting to Socket.io server:', socketUrl)
+      
       const socket = io(socketUrl, {
         transports: ['websocket', 'polling'],
         reconnection: true,
-        reconnectionAttempts: 5,
+        reconnectionAttempts: 10,
         reconnectionDelay: 1000,
-        timeout: 5000,
+        reconnectionDelayMax: 5000,
+        timeout: 20000,
+        forceNew: true,
       })
       socketRef.current = socket
 
       socket.on('connect', () => {
-        console.log('Connected to server')
+        console.log('✅ Connected to Socket.io server:', socket.id)
         setConnectionStatus('connected')
         socket.emit('join-room', { roomId, userName, isPrivate: isPrivate.toString() })
       })
 
       socket.on('connect_error', (error) => {
-        console.error('Socket connection error:', error)
+        console.error('❌ Socket connection error:', error.message)
+        console.error('Socket URL was:', socketUrl)
         setConnectionStatus('disconnected')
       })
 
-      socket.on('disconnect', () => {
+      socket.on('disconnect', (reason) => {
+        console.log('⚠️ Disconnected from server:', reason)
         setConnectionStatus('disconnected')
+      })
+      
+      socket.on('reconnect', (attemptNumber) => {
+        console.log('🔄 Reconnected after', attemptNumber, 'attempts')
+        setConnectionStatus('connected')
+        socket.emit('join-room', { roomId, userName, isPrivate: isPrivate.toString() })
       })
 
       socket.on('user-joined', (userList: string[]) => {
@@ -93,15 +112,22 @@ export default function ExcalidrawWrapper({
 
       // Receive updates from other users
       socket.on('excalidraw-update', (data: { elements: any[], appState: AppState, files: BinaryFiles }) => {
-        if (!excalidrawAPI || isLocalChangeRef.current) {
+        if (!excalidrawAPI) {
+          console.warn('Excalidraw API not ready, skipping update')
+          return
+        }
+        
+        // Skip if this is our own change (prevent feedback loop)
+        if (isLocalChangeRef.current) {
           isLocalChangeRef.current = false
           return
         }
 
         try {
+          console.log('📥 Received remote update:', data.elements?.length || 0, 'elements')
           excalidrawAPI.updateScene({
-            elements: data.elements,
-            appState: data.appState,
+            elements: data.elements || [],
+            appState: data.appState || {},
           })
 
           // Handle files if needed
@@ -117,7 +143,7 @@ export default function ExcalidrawWrapper({
             }
           }
         } catch (error) {
-          console.error('Error applying remote update:', error)
+          console.error('❌ Error applying remote update:', error)
         }
       })
 
@@ -148,6 +174,9 @@ export default function ExcalidrawWrapper({
       })
 
       return () => {
+        if (changeTimeoutRef.current) {
+          clearTimeout(changeTimeoutRef.current)
+        }
         socket.disconnect()
       }
     } catch (error) {
@@ -174,14 +203,33 @@ export default function ExcalidrawWrapper({
     }
 
     // Broadcast to other users in real-time (if not private and connected)
+    // Use throttling to avoid sending too many updates
     if (!isPrivate && socketRef.current && socketRef.current.connected) {
+      // Clear previous timeout
+      if (changeTimeoutRef.current) {
+        clearTimeout(changeTimeoutRef.current)
+      }
+      
+      // Set flag to prevent feedback loop
       isLocalChangeRef.current = true
-      socketRef.current.emit('excalidraw-change', {
-        roomId,
-        elements: Array.from(elements),
-        appState,
-        files,
-      })
+      
+      // Throttle updates (send every 100ms max)
+      changeTimeoutRef.current = setTimeout(() => {
+        if (socketRef.current && socketRef.current.connected) {
+          console.log('📤 Sending update:', elements.length, 'elements')
+          socketRef.current.emit('excalidraw-change', {
+            roomId,
+            elements: Array.from(elements),
+            appState,
+            files,
+          })
+          
+          // Reset flag after a short delay to allow remote updates
+          setTimeout(() => {
+            isLocalChangeRef.current = false
+          }, 50)
+        }
+      }, 100)
     }
   }
 

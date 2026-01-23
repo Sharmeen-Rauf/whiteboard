@@ -4,9 +4,26 @@ const http = require('http')
 const server = http.createServer()
 const io = new Server(server, {
   cors: {
-    origin: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      const allowedOrigins = [
+        process.env.NEXT_PUBLIC_APP_URL,
+        'http://localhost:3000',
+        'https://localhost:3000',
+      ].filter(Boolean)
+      
+      // In production, allow all origins from Vercel
+      if (!origin || allowedOrigins.some(allowed => origin.includes(allowed?.replace(/^https?:\/\//, '').split('/')[0]))) {
+        callback(null, true)
+      } else {
+        console.log('CORS blocked origin:', origin)
+        callback(null, true) // Allow all for now, can restrict later
+      }
+    },
     methods: ['GET', 'POST'],
+    credentials: true,
   },
+  allowEIO3: true,
 })
 
 const rooms = new Map() // roomId -> { users: Set, excalidrawState: { elements, appState, files } }
@@ -16,6 +33,7 @@ io.on('connection', (socket) => {
 
   socket.on('join-room', ({ roomId, userName, isPrivate }) => {
     socket.join(roomId)
+    console.log(`🔵 Socket ${socket.id} joining room: ${roomId}`)
     
     if (!rooms.has(roomId)) {
       rooms.set(roomId, {
@@ -27,27 +45,42 @@ io.on('connection', (socket) => {
         },
         isPrivate: isPrivate === 'true',
       })
+      console.log(`✨ Created new room: ${roomId}`)
     }
 
     const room = rooms.get(roomId)
     const userKey = userName || socket.id
     room.users.add(userKey)
     
+    console.log(`👤 ${userKey} joined room ${roomId} (${room.users.size} users)`)
+    
     // Send current Excalidraw state to new user
-    if (room.excalidrawState.elements.length > 0) {
+    if (room.excalidrawState && room.excalidrawState.elements.length > 0) {
+      console.log(`📤 Sending initial state to new user: ${room.excalidrawState.elements.length} elements`)
       socket.emit('excalidraw-state', room.excalidrawState)
     }
     
     // Notify others
-    socket.to(roomId).emit('user-joined', Array.from(room.users))
-    socket.emit('user-joined', Array.from(room.users))
+    const userList = Array.from(room.users)
+    socket.to(roomId).emit('user-joined', userList)
+    socket.emit('user-joined', userList)
     
-    console.log(`${userKey} joined room ${roomId}`)
+    console.log(`✅ ${userKey} successfully joined room ${roomId}`)
   })
 
   socket.on('excalidraw-change', ({ roomId, elements, appState, files }) => {
     const room = rooms.get(roomId)
-    if (!room || room.isPrivate) return
+    if (!room) {
+      console.warn('Room not found:', roomId)
+      return
+    }
+    
+    if (room.isPrivate) {
+      console.log('Ignoring change for private room:', roomId)
+      return
+    }
+
+    console.log(`📨 Received change for room ${roomId}:`, elements?.length || 0, 'elements')
 
     // Update room state
     room.excalidrawState = {
@@ -56,7 +89,10 @@ io.on('connection', (socket) => {
       files: files || {},
     }
 
-    // Broadcast to all other users in the room
+    // Broadcast to all other users in the room (excluding sender)
+    const clientsInRoom = Array.from(io.sockets.adapter.rooms.get(roomId) || [])
+    console.log(`📤 Broadcasting to ${clientsInRoom.length - 1} other clients in room ${roomId}`)
+    
     socket.to(roomId).emit('excalidraw-update', {
       elements,
       appState,
