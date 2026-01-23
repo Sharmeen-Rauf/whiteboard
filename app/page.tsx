@@ -207,7 +207,7 @@ export default function Home() {
             onClick={createDrawingBoard}
             className="px-3 py-1.5 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition-colors font-medium"
           >
-            🎨 Drawing Board
+            🎨 Excalidraw Board
           </button>
           <button
             onClick={() => {

@@ -1,21 +1,20 @@
 # Company Whiteboard - Collaborative Drawing Board
 
-A real-time collaborative whiteboard application built with Next.js, Fabric.js, and Socket.io. Employees can draw, write, and collaborate in real-time on shared or private whiteboards.
+A real-time collaborative whiteboard application built with Next.js and Excalidraw. Employees can draw, write, and collaborate in real-time on shared or private whiteboards using the powerful Excalidraw editor.
 
 ## Features
 
-### 🎨 Drawing Tools
-- **Select Tool** - Move and modify objects
-- **Rectangle** - Draw rectangles
-- **Circle** - Draw circles
-- **Triangle** - Draw triangles
-- **Line** - Draw straight lines
-- **Arrow** - Draw arrows
-- **Text** - Add editable text
-- **Freehand Drawing** - Draw freely with pencil/brush
-- **Color Picker** - Choose stroke and fill colors
-- **Stroke Width** - Adjust line thickness
-- **Font Size** - Adjust text size
+### 🎨 Excalidraw Features
+- **All Excalidraw Tools** - Rectangle, Circle, Diamond, Arrow, Line, Free-draw, Eraser
+- **Hand-drawn Style** - Beautiful hand-drawn like diagrams
+- **Infinite Canvas** - Zoom and pan support
+- **Undo/Redo** - Full history support
+- **Export** - Export to PNG, SVG & clipboard
+- **Dark Mode** - Toggle theme
+- **Image Support** - Add images to canvas
+- **Shape Libraries** - Access to shape libraries
+- **Arrow Binding** - Smart arrow connections
+- **Text Support** - Add and edit text
 
 ### 👥 Real-Time Collaboration
 - **Live Updates** - See what others are drawing in real-time
@@ -35,8 +34,8 @@ A real-time collaborative whiteboard application built with Next.js, Fabric.js, 
 
 - **Next.js 14** - React framework
 - **TypeScript** - Type safety
-- **Fabric.js** - Canvas drawing library
-- **Socket.io** - Real-time WebSocket communication
+- **Excalidraw** - Professional whiteboard library
+- **Socket.io** - Real-time WebSocket communication (for future collaboration)
 - **Tailwind CSS** - Styling
 
 ## Getting Started

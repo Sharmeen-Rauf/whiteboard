@@ -2,22 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import DrawingCanvas from '@/components/DrawingCanvas'
-import DrawingToolbar from '@/components/DrawingToolbar'
-import { DrawingTool, DrawingState } from '@/lib/drawing'
+import dynamic from 'next/dynamic'
+import ExcalidrawWrapper from '@/components/ExcalidrawWrapper'
 
 export default function WhiteboardPage() {
   const params = useParams()
   const router = useRouter()
   const roomId = params.roomId as string
-  const [tool, setTool] = useState<DrawingTool>('select')
-  const [drawingState, setDrawingState] = useState<DrawingState>({
-    tool: 'select',
-    strokeColor: '#000000',
-    fillColor: '#ffffff',
-    strokeWidth: 2,
-    fontSize: 24,
-  })
   const [userName, setUserName] = useState('')
   const [isPrivate, setIsPrivate] = useState(false)
   const [showJoinModal, setShowJoinModal] = useState(true)
@@ -39,29 +30,6 @@ export default function WhiteboardPage() {
     setShowJoinModal(false)
   }
 
-  const handleStateChange = (newState: Partial<DrawingState>) => {
-    setDrawingState((prev) => ({ ...prev, ...newState }))
-  }
-
-  const handleExport = () => {
-    // Export canvas as image
-    const canvas = document.querySelector('canvas')
-    if (canvas) {
-      const url = canvas.toDataURL('image/png')
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `whiteboard-${roomId}-${Date.now()}.png`
-      a.click()
-    }
-  }
-
-  const handleClear = () => {
-    if (confirm('Are you sure you want to clear the entire whiteboard?')) {
-      if (typeof window !== 'undefined' && (window as any)[`clear_${roomId}`]) {
-        (window as any)[`clear_${roomId}`]()
-      }
-    }
-  }
 
   if (showJoinModal) {
     return (
@@ -109,51 +77,40 @@ export default function WhiteboardPage() {
 
   return (
     <div className="h-screen flex flex-col bg-white">
-      <DrawingToolbar
-        tool={tool}
-        onToolChange={setTool}
-        drawingState={drawingState}
-        onStateChange={handleStateChange}
-        onClear={handleClear}
-        onExport={handleExport}
-      />
-      <div className="flex-1 overflow-hidden relative">
-        <DrawingCanvas
+      {/* Header with share option */}
+      <div className="border-b border-gray-200 bg-white px-4 py-2 flex items-center justify-between">
+        <h1 className="text-lg font-semibold text-gray-800">Company Whiteboard</h1>
+        {!isPrivate && (
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              readOnly
+              value={typeof window !== 'undefined' ? window.location.href : ''}
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded bg-gray-50 max-w-md"
+              onClick={(e) => (e.target as HTMLInputElement).select()}
+            />
+            <button
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  navigator.clipboard.writeText(window.location.href)
+                  alert('Link copied! Share it with others to collaborate.')
+                }
+              }}
+              className="px-4 py-1.5 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            >
+              📋 Copy Link
+            </button>
+          </div>
+        )}
+      </div>
+      
+      {/* Excalidraw Canvas */}
+      <div className="flex-1 overflow-hidden">
+        <ExcalidrawWrapper
           roomId={roomId}
           isPrivate={isPrivate}
           userName={userName}
-          tool={tool}
-          drawingState={drawingState}
-          onClear={handleClear}
         />
-        {!isPrivate && (
-          <div className="absolute bottom-4 left-4 bg-white border border-gray-300 rounded-lg p-3 shadow-lg max-w-xs">
-            <p className="text-xs font-semibold mb-1">📋 Share this board:</p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                readOnly
-                value={typeof window !== 'undefined' ? window.location.href : ''}
-                className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded bg-gray-50"
-                onClick={(e) => (e.target as HTMLInputElement).select()}
-              />
-              <button
-                onClick={() => {
-                  if (typeof window !== 'undefined') {
-                    navigator.clipboard.writeText(window.location.href)
-                    alert('Link copied! Share it with others to collaborate.')
-                  }
-                }}
-                className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                Copy
-              </button>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Anyone with this link can join and draw together in real-time!
-            </p>
-          </div>
-        )}
       </div>
     </div>
   )
