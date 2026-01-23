@@ -30,6 +30,7 @@ export default function DrawingCanvas({
   const [users, setUsers] = useState<string[]>([])
   const [isCanvasReady, setIsCanvasReady] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected')
+  const currentShapeRef = useRef<FabricObject | null>(null)
 
   // Initialize canvas
   useEffect(() => {
@@ -40,6 +41,11 @@ export default function DrawingCanvas({
     createCanvas(canvasRef.current).then((canvas) => {
       fabricCanvasRef.current = canvas
       setIsCanvasReady(true)
+      
+      // Make canvas interactive
+      canvas.renderOnAddRemove = true
+      canvas.hoverCursor = 'move'
+      canvas.moveCursor = 'move'
 
       // Handle window resize
       const handleResize = () => {
@@ -92,7 +98,6 @@ export default function DrawingCanvas({
       socket.on('connect_error', (error) => {
         console.error('Socket connection error:', error)
         setConnectionStatus('disconnected')
-        // Continue working locally even if server is not available
       })
 
       socket.on('disconnect', () => {
@@ -113,11 +118,9 @@ export default function DrawingCanvas({
         try {
           const fabric = (await import('fabric')).default
           
-          // Load object from server
           if (data.type === 'add') {
             fabric.util.enlivenObjects([data.object], (objects: FabricObject[]) => {
               objects.forEach((obj) => {
-                // Check if object already exists
                 const existing = fabricCanvasRef.current?.getObjects().find((o: any) => o.id === data.object?.id)
                 if (!existing) {
                   ;(obj as any).id = data.object?.id || `obj_${Date.now()}_${Math.random()}`
@@ -176,30 +179,114 @@ export default function DrawingCanvas({
   // Setup tool
   useEffect(() => {
     if (!fabricCanvasRef.current || !isCanvasReady) return
+    
     setupTool(fabricCanvasRef.current, tool, drawingState).catch((error) => {
       console.error('Error setting up tool:', error)
     })
   }, [tool, drawingState, isCanvasReady])
 
-  // Handle canvas events
+  // Handle canvas drawing events
   useEffect(() => {
     if (!fabricCanvasRef.current || !isCanvasReady) return
     const canvas = fabricCanvasRef.current
 
-    const handleMouseDown = (e: IEvent) => {
+    const handleMouseDown = async (e: IEvent) => {
+      // Skip for select and freehand (they have their own handlers)
       if (tool === 'select' || tool === 'freehand') return
       
       const pointer = canvas.getPointer(e.e)
       setIsDrawing(true)
       setStartPos({ x: pointer.x, y: pointer.y })
+      currentShapeRef.current = null
     }
 
-    const handleMouseMove = (e: IEvent) => {
-      // Can be used for preview drawing
+    const handleMouseMove = async (e: IEvent) => {
+      if (!isDrawing || tool === 'select' || tool === 'freehand') return
+      
+      const pointer = canvas.getPointer(e.e)
+      
+      // Remove previous preview shape
+      if (currentShapeRef.current) {
+        canvas.remove(currentShapeRef.current)
+      }
+      
+      // Create preview shape
+      try {
+        const fabric = (await import('fabric')).default
+        let preview: FabricObject | null = null
+        
+        const left = Math.min(startPos.x, pointer.x)
+        const top = Math.min(startPos.y, pointer.y)
+        const width = Math.abs(pointer.x - startPos.x)
+        const height = Math.abs(pointer.y - startPos.y)
+
+        switch (tool) {
+          case 'rectangle':
+            preview = new fabric.Rect({
+              left,
+              top,
+              width,
+              height,
+              fill: drawingState.fillColor === '#ffffff' ? 'transparent' : drawingState.fillColor,
+              stroke: drawingState.strokeColor,
+              strokeWidth: drawingState.strokeWidth,
+              opacity: 0.7,
+            })
+            break
+          case 'circle':
+            const radius = Math.sqrt(width * width + height * height) / 2
+            preview = new fabric.Circle({
+              left: startPos.x - radius,
+              top: startPos.y - radius,
+              radius,
+              fill: drawingState.fillColor === '#ffffff' ? 'transparent' : drawingState.fillColor,
+              stroke: drawingState.strokeColor,
+              strokeWidth: drawingState.strokeWidth,
+              opacity: 0.7,
+            })
+            break
+          case 'triangle':
+            preview = new fabric.Triangle({
+              left,
+              top,
+              width,
+              height,
+              fill: drawingState.fillColor === '#ffffff' ? 'transparent' : drawingState.fillColor,
+              stroke: drawingState.strokeColor,
+              strokeWidth: drawingState.strokeWidth,
+              opacity: 0.7,
+            })
+            break
+          case 'line':
+          case 'arrow':
+            preview = new fabric.Line([startPos.x, startPos.y, pointer.x, pointer.y], {
+              stroke: drawingState.strokeColor,
+              strokeWidth: drawingState.strokeWidth,
+              opacity: 0.7,
+            })
+            break
+        }
+        
+        if (preview) {
+          preview.selectable = false
+          preview.evented = false
+          canvas.add(preview)
+          currentShapeRef.current = preview
+          canvas.renderAll()
+        }
+      } catch (error) {
+        console.error('Error creating preview:', error)
+      }
     }
 
     const handleMouseUp = async (e: IEvent) => {
       if (!isDrawing || tool === 'select' || tool === 'freehand') return
+      
+      // Remove preview
+      if (currentShapeRef.current) {
+        canvas.remove(currentShapeRef.current)
+        currentShapeRef.current = null
+      }
       
       const pointer = canvas.getPointer(e.e)
       
@@ -228,9 +315,9 @@ export default function DrawingCanvas({
     }
 
     const handleObjectModified = (e: IEvent) => {
-      if (!socketRef.current || isPrivate) return
+      if (!socketRef.current || isPrivate || !socketRef.current.connected) return
       const obj = e.target
-      if (obj && socketRef.current.connected) {
+      if (obj) {
         const objId = (obj as any).id || `obj_${Date.now()}_${Math.random()}`
         ;(obj as any).id = objId
         socketRef.current.emit('drawing-action', {
@@ -243,20 +330,18 @@ export default function DrawingCanvas({
     }
 
     const handleObjectRemoved = (e: IEvent) => {
-      if (!socketRef.current || !e.target || isPrivate) return
-      if (socketRef.current.connected) {
-        socketRef.current.emit('drawing-action', {
-          type: 'remove',
-          objectId: (e.target as any).id,
-          roomId,
-        })
-      }
+      if (!socketRef.current || !e.target || isPrivate || !socketRef.current.connected) return
+      socketRef.current.emit('drawing-action', {
+        type: 'remove',
+        objectId: (e.target as any).id,
+        roomId,
+      })
     }
 
     const handlePathCreated = async (e: IEvent) => {
-      if (!socketRef.current || isPrivate) return
+      if (!socketRef.current || isPrivate || !socketRef.current.connected) return
       const path = e.path
-      if (path && socketRef.current.connected) {
+      if (path) {
         const pathId = (path as any).id || `obj_${Date.now()}_${Math.random()}`
         ;(path as any).id = pathId
         socketRef.current.emit('drawing-action', {
@@ -290,7 +375,6 @@ export default function DrawingCanvas({
     fabricCanvasRef.current.backgroundColor = '#ffffff'
     fabricCanvasRef.current.renderAll()
     
-    // Send to server if connected and not private
     if (socketRef.current && socketRef.current.connected && !isPrivate) {
       socketRef.current.emit('drawing-action', {
         type: 'clear',
@@ -299,7 +383,6 @@ export default function DrawingCanvas({
     }
   }, [roomId, isPrivate])
 
-  // Expose clear function to parent
   useEffect(() => {
     if (onClear && typeof window !== 'undefined') {
       ;(window as any)[`clear_${roomId}`] = clearCanvas
@@ -307,7 +390,18 @@ export default function DrawingCanvas({
   }, [clearCanvas, roomId, onClear])
 
   if (typeof window === 'undefined') {
-    return <div>Loading...</div>
+    return <div className="flex items-center justify-center h-full">Loading...</div>
+  }
+
+  if (!isCanvasReady) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading canvas...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -315,7 +409,7 @@ export default function DrawingCanvas({
       <canvas ref={canvasRef} className="border border-gray-300" />
       
       {/* Status indicators */}
-      <div className="absolute top-2 left-2 flex gap-2">
+      <div className="absolute top-2 left-2 flex gap-2 flex-wrap">
         {isPrivate && (
           <div className="bg-yellow-100 border border-yellow-300 rounded px-2 py-1 text-xs text-yellow-800">
             🔒 Private Board
@@ -331,7 +425,7 @@ export default function DrawingCanvas({
             🔵 Connecting...
           </div>
         )}
-        {!isPrivate && connectionStatus === 'disconnected' && socketRef.current && (
+        {!isPrivate && connectionStatus === 'disconnected' && (
           <div className="bg-gray-100 border border-gray-300 rounded px-2 py-1 text-xs text-gray-600">
             ⚪ Working Offline
           </div>
@@ -339,7 +433,7 @@ export default function DrawingCanvas({
       </div>
       
       {!isPrivate && users.length > 0 && (
-        <div className="absolute top-2 right-2 bg-white border border-gray-300 rounded px-2 py-1 text-xs">
+        <div className="absolute top-2 right-2 bg-white border border-gray-300 rounded px-2 py-1 text-xs shadow">
           👥 {users.length} {users.length === 1 ? 'user' : 'users'}
         </div>
       )}
