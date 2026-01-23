@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import ExcalidrawWrapper from '@/components/ExcalidrawWrapper'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 export default function WhiteboardPage() {
   const params = useParams()
@@ -106,11 +107,13 @@ export default function WhiteboardPage() {
       
       {/* Excalidraw Canvas */}
       <div className="flex-1 overflow-hidden">
-        <ExcalidrawWrapper
-          roomId={roomId}
-          isPrivate={isPrivate}
-          userName={userName}
-        />
+        <ErrorBoundary>
+          <ExcalidrawWrapper
+            roomId={roomId}
+            isPrivate={isPrivate}
+            userName={userName}
+          />
+        </ErrorBoundary>
       </div>
     </div>
   )

@@ -15,9 +15,35 @@ import '@excalidraw/excalidraw/index.css'
 
 // Dynamically import Excalidraw to avoid SSR issues
 const Excalidraw = dynamic(
-  async () => (await import('@excalidraw/excalidraw')).Excalidraw,
+  async () => {
+    try {
+      const excalidrawModule = await import('@excalidraw/excalidraw')
+      return { default: excalidrawModule.Excalidraw }
+    } catch (error) {
+      console.error('Failed to load Excalidraw:', error)
+      // Return a fallback component
+      return {
+        default: () => (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <p className="text-red-600 mb-2">Failed to load Excalidraw</p>
+              <p className="text-sm text-gray-500">Please refresh the page</p>
+            </div>
+          </div>
+        ),
+      }
+    }
+  },
   {
     ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading Excalidraw...</p>
+        </div>
+      </div>
+    ),
   }
 )
 
@@ -38,7 +64,7 @@ export default function ExcalidrawWrapper({
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected')
   const socketRef = useRef<Socket | null>(null)
   const isLocalChangeRef = useRef(false)
-  const changeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const changeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     // Set asset path for Excalidraw
@@ -57,6 +83,13 @@ export default function ExcalidrawWrapper({
       return
     }
 
+    // Check if socket.io-client is available
+    if (typeof io === 'undefined') {
+      console.error('Socket.io client not available')
+      setConnectionStatus('disconnected')
+      return
+    }
+
     try {
       setConnectionStatus('connecting')
       let socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001'
@@ -65,6 +98,9 @@ export default function ExcalidrawWrapper({
       if (socketUrl && !socketUrl.startsWith('http://') && !socketUrl.startsWith('https://')) {
         socketUrl = `https://${socketUrl}`
       }
+      
+      // Remove trailing slash if present
+      socketUrl = socketUrl.replace(/\/$/, '')
       
       console.log('Connecting to Socket.io server:', socketUrl)
       
@@ -76,6 +112,7 @@ export default function ExcalidrawWrapper({
         reconnectionDelayMax: 5000,
         timeout: 20000,
         forceNew: true,
+        autoConnect: true,
       })
       socketRef.current = socket
 
@@ -176,13 +213,17 @@ export default function ExcalidrawWrapper({
       return () => {
         if (changeTimeoutRef.current) {
           clearTimeout(changeTimeoutRef.current)
+          changeTimeoutRef.current = null
         }
-        socket.disconnect()
+        if (socket && socket.connected) {
+          socket.disconnect()
+        }
       }
     } catch (error) {
       console.error('Error initializing socket:', error)
       setConnectionStatus('disconnected')
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, userName, isPrivate])
 
   const handleChange = (
