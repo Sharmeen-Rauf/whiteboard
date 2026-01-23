@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import fabric from 'fabric'
 import { DrawingTool, DrawingState, createCanvas, setupTool, drawShape } from '@/lib/drawing'
 import { io, Socket } from 'socket.io-client'
 import type { Canvas as FabricCanvas, Object as FabricObject, IEvent } from 'fabric'
@@ -32,36 +31,53 @@ export default function DrawingCanvas({
 
   // Initialize canvas
   useEffect(() => {
-    if (!canvasRef.current) return
+    if (!canvasRef.current || typeof window === 'undefined') return
 
-    const canvas = createCanvas(canvasRef.current)
-    fabricCanvasRef.current = canvas
+    // Dynamically import fabric and create canvas
+    createCanvas(canvasRef.current).then((canvas) => {
+      fabricCanvasRef.current = canvas
 
-    // Handle window resize
-    const handleResize = () => {
-      if (canvas && canvasRef.current) {
-        canvas.setWidth(window.innerWidth)
-        canvas.setHeight(window.innerHeight - 60)
-        canvas.renderAll()
+      // Handle window resize
+      const handleResize = () => {
+        if (canvas && canvasRef.current) {
+          canvas.setWidth(window.innerWidth)
+          canvas.setHeight(window.innerHeight - 60)
+          canvas.renderAll()
+        }
       }
-    }
-    window.addEventListener('resize', handleResize)
+      window.addEventListener('resize', handleResize)
 
-    return () => {
-      window.removeEventListener('resize', handleResize)
-      canvas.dispose()
-    }
+      return () => {
+        window.removeEventListener('resize', handleResize)
+        canvas.dispose()
+      }
+    }).catch((error) => {
+      console.error('Error initializing canvas:', error)
+    })
   }, [])
 
   // Initialize Socket.io connection
   useEffect(() => {
-    const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001')
-    socketRef.current = socket
+    if (typeof window === 'undefined') return
 
-    socket.on('connect', () => {
-      console.log('Connected to server')
-      socket.emit('join-room', { roomId, userName, isPrivate: isPrivate.toString() })
-    })
+    try {
+      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001'
+      const socket = io(socketUrl, {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      })
+      socketRef.current = socket
+
+      socket.on('connect', () => {
+        console.log('Connected to server')
+        socket.emit('join-room', { roomId, userName, isPrivate: isPrivate.toString() })
+      })
+
+      socket.on('connect_error', (error) => {
+        console.error('Socket connection error:', error)
+      })
 
     socket.on('user-joined', (userList: string[]) => {
       setUsers(userList)
@@ -71,56 +87,72 @@ export default function DrawingCanvas({
       setUsers(userList)
     })
 
-    socket.on('drawing-update', (data: any) => {
-      if (!fabricCanvasRef.current) return
-      
-      // Load object from server
-      if (data.type === 'add') {
-        fabric.util.enlivenObjects([data.object], (objects: FabricObject[]) => {
-          objects.forEach((obj) => {
-            fabricCanvasRef.current?.add(obj)
-          })
-          fabricCanvasRef.current?.renderAll()
-        })
-      } else if (data.type === 'modify') {
-        const obj = fabricCanvasRef.current.getObjects().find((o: any) => o.id === data.objectId)
-        if (obj) {
-          obj.set(data.properties)
-          fabricCanvasRef.current.renderAll()
+      socket.on('drawing-update', async (data: any) => {
+        if (!fabricCanvasRef.current) return
+        
+        try {
+          const fabric = (await import('fabric')).default
+          
+          // Load object from server
+          if (data.type === 'add') {
+            fabric.util.enlivenObjects([data.object], (objects: FabricObject[]) => {
+              objects.forEach((obj) => {
+                fabricCanvasRef.current?.add(obj)
+              })
+              fabricCanvasRef.current?.renderAll()
+            })
+          } else if (data.type === 'modify') {
+            const obj = fabricCanvasRef.current.getObjects().find((o: any) => o.id === data.objectId)
+            if (obj) {
+              obj.set(data.properties)
+              fabricCanvasRef.current.renderAll()
+            }
+          } else if (data.type === 'remove') {
+            const obj = fabricCanvasRef.current.getObjects().find((o: any) => o.id === data.objectId)
+            if (obj) {
+              fabricCanvasRef.current.remove(obj)
+              fabricCanvasRef.current.renderAll()
+            }
+          } else if (data.type === 'clear') {
+            fabricCanvasRef.current.clear()
+            fabricCanvasRef.current.backgroundColor = '#ffffff'
+            fabricCanvasRef.current.renderAll()
+          }
+        } catch (error) {
+          console.error('Error processing drawing update:', error)
         }
-      } else if (data.type === 'remove') {
-        const obj = fabricCanvasRef.current.getObjects().find((o: any) => o.id === data.objectId)
-        if (obj) {
-          fabricCanvasRef.current.remove(obj)
-          fabricCanvasRef.current.renderAll()
-        }
-      } else if (data.type === 'clear') {
-        fabricCanvasRef.current.clear()
-        fabricCanvasRef.current.backgroundColor = '#ffffff'
-        fabricCanvasRef.current.renderAll()
-      }
-    })
-
-    socket.on('canvas-state', (objects: any[]) => {
-      if (!fabricCanvasRef.current) return
-      fabricCanvasRef.current.clear()
-      fabric.util.enlivenObjects(objects, (enlivened: FabricObject[]) => {
-        enlivened.forEach((obj) => {
-          fabricCanvasRef.current?.add(obj)
-        })
-        fabricCanvasRef.current?.renderAll()
       })
-    })
 
-    return () => {
-      socket.disconnect()
+      socket.on('canvas-state', async (objects: any[]) => {
+        if (!fabricCanvasRef.current) return
+        try {
+          const fabric = (await import('fabric')).default
+          fabricCanvasRef.current.clear()
+          fabric.util.enlivenObjects(objects, (enlivened: FabricObject[]) => {
+            enlivened.forEach((obj) => {
+              fabricCanvasRef.current?.add(obj)
+            })
+            fabricCanvasRef.current?.renderAll()
+          })
+        } catch (error) {
+          console.error('Error loading canvas state:', error)
+        }
+      })
+
+      return () => {
+        socket.disconnect()
+      }
+    } catch (error) {
+      console.error('Error initializing socket:', error)
     }
   }, [roomId, userName, isPrivate])
 
   // Setup tool
   useEffect(() => {
     if (!fabricCanvasRef.current) return
-    setupTool(fabricCanvasRef.current, tool, drawingState)
+    setupTool(fabricCanvasRef.current, tool, drawingState).catch((error) => {
+      console.error('Error setting up tool:', error)
+    })
   }, [tool, drawingState])
 
   // Handle canvas events
@@ -147,7 +179,9 @@ export default function DrawingCanvas({
       if (!isDrawing || tool === 'select' || tool === 'freehand') return
       
       const pointer = canvas.getPointer(e.e)
-      drawShape(canvas, tool, drawingState, startPos.x, startPos.y, pointer.x, pointer.y)
+      drawShape(canvas, tool, drawingState, startPos.x, startPos.y, pointer.x, pointer.y).catch((error) => {
+        console.error('Error drawing shape:', error)
+      })
       
       // Send to server
       const objects = canvas.getObjects()
@@ -235,6 +269,10 @@ export default function DrawingCanvas({
       ;(window as any)[`clear_${roomId}`] = clearCanvas
     }
   }, [clearCanvas, roomId, onClear])
+
+  if (typeof window === 'undefined') {
+    return <div>Loading...</div>
+  }
 
   return (
     <div className="relative w-full h-full">

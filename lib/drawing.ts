@@ -1,4 +1,3 @@
-import fabric from 'fabric'
 import type { Canvas as FabricCanvas, Object as FabricObject } from 'fabric'
 
 export type DrawingTool = 
@@ -20,19 +19,28 @@ export interface DrawingState {
   fontSize: number
 }
 
-export const createCanvas = (element: HTMLCanvasElement): FabricCanvas => {
+export const createCanvas = async (element: HTMLCanvasElement): Promise<FabricCanvas> => {
+  if (typeof window === 'undefined') {
+    throw new Error('Canvas can only be created on the client side')
+  }
+  
+  const fabric = (await import('fabric')).default
   return new fabric.Canvas(element, {
-    width: typeof window !== 'undefined' ? window.innerWidth : 1200,
-    height: typeof window !== 'undefined' ? window.innerHeight - 60 : 800,
+    width: window.innerWidth,
+    height: window.innerHeight - 60,
     backgroundColor: '#ffffff',
   })
 }
 
-export const setupTool = (
+export const setupTool = async (
   canvas: FabricCanvas,
   tool: DrawingTool,
   state: DrawingState
 ) => {
+  if (typeof window === 'undefined') return
+  
+  const fabric = (await import('fabric')).default
+  
   canvas.isDrawingMode = tool === 'freehand'
   canvas.freeDrawingBrush = tool === 'freehand' 
     ? new fabric.PencilBrush(canvas)
@@ -51,7 +59,7 @@ export const setupTool = (
   })
 }
 
-export const drawShape = (
+export const drawShape = async (
   canvas: FabricCanvas,
   tool: DrawingTool,
   state: DrawingState,
@@ -60,6 +68,9 @@ export const drawShape = (
   endX: number,
   endY: number
 ) => {
+  if (typeof window === 'undefined') return
+  
+  const fabric = (await import('fabric')).default
   let shape: FabricObject | null = null
 
   const left = Math.min(startX, endX)
