@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import { useState, useEffect } from 'react'
-import { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types'
+import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 
 // Import Excalidraw CSS
 import '@excalidraw/excalidraw/index.css'
