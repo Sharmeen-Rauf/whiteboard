@@ -67,7 +67,9 @@ export default function ExcalidrawWrapper({
   const changeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Helper function to sanitize appState (remove non-serializable properties)
-  const sanitizeAppState = useCallback((appState: AppState): Partial<AppState> => {
+  const sanitizeAppState = useCallback((appState: AppState): Pick<AppState, keyof AppState> | null => {
+    if (!appState) return null
+    
     const sanitized = { ...appState }
     // Remove collaborators as it's a Map and causes issues when serialized
     if ('collaborators' in sanitized) {
@@ -77,7 +79,8 @@ export default function ExcalidrawWrapper({
     if ('socket' in sanitized) {
       delete (sanitized as any).socket
     }
-    return sanitized
+    // Type assertion to match Excalidraw's expected type
+    return sanitized as unknown as Pick<AppState, keyof AppState>
   }, [])
 
   useEffect(() => {
@@ -178,11 +181,11 @@ export default function ExcalidrawWrapper({
           console.log('📥 Received remote update:', data.elements?.length || 0, 'elements')
           
           // Sanitize appState to remove collaborators if present
-          const sanitizedAppState = data.appState ? sanitizeAppState(data.appState as AppState) : {}
+          const sanitizedAppState = data.appState ? sanitizeAppState(data.appState as AppState) : null
           
           excalidrawAPI.updateScene({
             elements: data.elements || [],
-            appState: sanitizedAppState,
+            ...(sanitizedAppState && { appState: sanitizedAppState }),
           })
 
           // Handle files if needed
@@ -208,11 +211,11 @@ export default function ExcalidrawWrapper({
 
         try {
           // Sanitize appState to remove collaborators if present
-          const sanitizedAppState = data.appState ? sanitizeAppState(data.appState as AppState) : {}
+          const sanitizedAppState = data.appState ? sanitizeAppState(data.appState as AppState) : null
           
           excalidrawAPI.updateScene({
             elements: data.elements || [],
-            appState: sanitizedAppState,
+            ...(sanitizedAppState && { appState: sanitizedAppState }),
           })
 
           if (data.files && Object.keys(data.files).length > 0) {
@@ -312,7 +315,7 @@ export default function ExcalidrawWrapper({
           
           excalidrawAPI.updateScene({
             elements: data.elements,
-            appState: sanitizedAppState,
+            ...(sanitizedAppState && { appState: sanitizedAppState }),
           })
           
           // Restore files if they exist
