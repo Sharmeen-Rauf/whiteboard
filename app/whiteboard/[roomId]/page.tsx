@@ -82,14 +82,18 @@ export default function WhiteboardPage() {
               />
             </div>
             <div>
-              <label className="flex items-center gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={isPrivate}
                   onChange={(e) => setIsPrivate(e.target.checked)}
+                  className="cursor-pointer"
                 />
-                <span className="text-sm">Private board (only you can see)</span>
+                <span className="text-sm">🔒 Private board (only you can see - no collaboration)</span>
               </label>
+              <p className="text-xs text-gray-500 mt-1 ml-6">
+                Uncheck to enable real-time collaboration with others
+              </p>
             </div>
             <button
               onClick={handleJoin}
@@ -113,7 +117,7 @@ export default function WhiteboardPage() {
         onClear={handleClear}
         onExport={handleExport}
       />
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden relative">
         <DrawingCanvas
           roomId={roomId}
           isPrivate={isPrivate}
@@ -122,6 +126,34 @@ export default function WhiteboardPage() {
           drawingState={drawingState}
           onClear={handleClear}
         />
+        {!isPrivate && (
+          <div className="absolute bottom-4 left-4 bg-white border border-gray-300 rounded-lg p-3 shadow-lg max-w-xs">
+            <p className="text-xs font-semibold mb-1">📋 Share this board:</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                readOnly
+                value={typeof window !== 'undefined' ? window.location.href : ''}
+                className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded bg-gray-50"
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+              />
+              <button
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    navigator.clipboard.writeText(window.location.href)
+                    alert('Link copied! Share it with others to collaborate.')
+                  }
+                }}
+                className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Copy
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Anyone with this link can join and draw together in real-time!
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )
