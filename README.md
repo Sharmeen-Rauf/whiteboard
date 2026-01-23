@@ -123,12 +123,9 @@ npm run dev:all
 │   │       └── page.tsx      # Drawing board page
 │   └── globals.css           # Global styles
 ├── components/
-│   ├── DrawingCanvas.tsx     # Canvas component with Fabric.js
-│   ├── DrawingToolbar.tsx    # Toolbar with all drawing tools
+│   ├── ExcalidrawWrapper.tsx # Excalidraw wrapper component
 │   ├── Note.tsx              # Note component
 │   └── NoteModal.tsx         # Modal for adding notes
-├── lib/
-│   └── drawing.ts            # Drawing utilities
 ├── server.js                 # Socket.io server
 └── package.json
 ```
