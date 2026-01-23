@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import fabric from 'fabric'
 import { DrawingTool, DrawingState, createCanvas, setupTool, drawShape } from '@/lib/drawing'
 import { io, Socket } from 'socket.io-client'
-import type { Canvas as FabricCanvas } from 'fabric'
+import type { Canvas as FabricCanvas, Object as FabricObject, IEvent } from 'fabric'
 
 interface DrawingCanvasProps {
   roomId: string
@@ -76,7 +76,7 @@ export default function DrawingCanvas({
       
       // Load object from server
       if (data.type === 'add') {
-        fabric.util.enlivenObjects([data.object], (objects: fabric.Object[]) => {
+        fabric.util.enlivenObjects([data.object], (objects: FabricObject[]) => {
           objects.forEach((obj) => {
             fabricCanvasRef.current?.add(obj)
           })
@@ -104,7 +104,7 @@ export default function DrawingCanvas({
     socket.on('canvas-state', (objects: any[]) => {
       if (!fabricCanvasRef.current) return
       fabricCanvasRef.current.clear()
-      fabric.util.enlivenObjects(objects, (enlivened: fabric.Object[]) => {
+      fabric.util.enlivenObjects(objects, (enlivened: FabricObject[]) => {
         enlivened.forEach((obj) => {
           fabricCanvasRef.current?.add(obj)
         })
@@ -128,7 +128,7 @@ export default function DrawingCanvas({
     if (!fabricCanvasRef.current) return
     const canvas = fabricCanvasRef.current
 
-    const handleMouseDown = (e: fabric.IEvent) => {
+    const handleMouseDown = (e: IEvent) => {
       if (tool === 'select' || tool === 'freehand') return
       
       const pointer = canvas.getPointer(e.e)
@@ -136,14 +136,14 @@ export default function DrawingCanvas({
       setStartPos({ x: pointer.x, y: pointer.y })
     }
 
-    const handleMouseMove = (e: fabric.IEvent) => {
+    const handleMouseMove = (e: IEvent) => {
       if (!isDrawing || tool === 'select' || tool === 'freehand') return
       
       const pointer = canvas.getPointer(e.e)
       // Preview drawing (optional)
     }
 
-    const handleMouseUp = (e: fabric.IEvent) => {
+    const handleMouseUp = (e: IEvent) => {
       if (!isDrawing || tool === 'select' || tool === 'freehand') return
       
       const pointer = canvas.getPointer(e.e)
@@ -164,7 +164,7 @@ export default function DrawingCanvas({
       setIsDrawing(false)
     }
 
-    const handleObjectModified = (e: fabric.IEvent) => {
+    const handleObjectModified = (e: IEvent) => {
       if (!socketRef.current) return
       const obj = e.target
       if (obj) {
@@ -178,7 +178,7 @@ export default function DrawingCanvas({
       }
     }
 
-    const handleObjectRemoved = (e: fabric.IEvent) => {
+    const handleObjectRemoved = (e: IEvent) => {
       if (!socketRef.current || !e.target) return
       socketRef.current.emit('drawing-action', {
         type: 'remove',
@@ -187,7 +187,7 @@ export default function DrawingCanvas({
       })
     }
 
-    const handlePathCreated = (e: fabric.IEvent) => {
+    const handlePathCreated = (e: IEvent) => {
       if (!socketRef.current) return
       const path = e.path
       if (path) {
