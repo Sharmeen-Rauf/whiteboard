@@ -4,7 +4,6 @@ import dynamic from 'next/dynamic'
 import { useState, useEffect } from 'react'
 import type { 
   ExcalidrawImperativeAPI,
-  OrderedExcalidrawElement,
   AppState,
   BinaryFiles,
 } from '@excalidraw/excalidraw/types'
@@ -45,7 +44,7 @@ export default function ExcalidrawWrapper({
   }, [])
 
   const handleChange = (
-    elements: readonly OrderedExcalidrawElement[],
+    elements: readonly any[],
     appState: AppState,
     files: BinaryFiles
   ) => {
