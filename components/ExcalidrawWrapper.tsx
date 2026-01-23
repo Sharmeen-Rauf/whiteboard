@@ -121,7 +121,7 @@ export default function ExcalidrawWrapper({
         )}
       </div>
       <Excalidraw
-        ref={(api: ExcalidrawImperativeAPI) => setExcalidrawAPI(api)}
+        excalidrawAPI={(api: ExcalidrawImperativeAPI) => setExcalidrawAPI(api)}
         onChange={handleChange}
         UIOptions={{
           canvasActions: {
