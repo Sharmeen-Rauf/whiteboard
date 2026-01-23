@@ -2,7 +2,12 @@
 
 import dynamic from 'next/dynamic'
 import { useState, useEffect } from 'react'
-import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
+import type { 
+  ExcalidrawImperativeAPI,
+  OrderedExcalidrawElement,
+  AppState,
+  BinaryFiles,
+} from '@excalidraw/excalidraw/types'
 
 // Import Excalidraw CSS
 import '@excalidraw/excalidraw/index.css'
@@ -39,13 +44,17 @@ export default function ExcalidrawWrapper({
     }
   }, [])
 
-  const handleChange = (elements: any[], appState: any, files: any) => {
+  const handleChange = (
+    elements: readonly OrderedExcalidrawElement[],
+    appState: AppState,
+    files: BinaryFiles
+  ) => {
     // Save to localStorage for persistence
     if (typeof window !== 'undefined') {
       const data = {
-        elements,
+        elements: Array.from(elements), // Convert readonly array to regular array for JSON
         appState,
-        files,
+        files, // BinaryFiles is already a Record (object)
         version: 2,
         type: 'excalidraw',
       }
@@ -61,10 +70,13 @@ export default function ExcalidrawWrapper({
       const saved = localStorage.getItem(`excalidraw_${roomId}`)
       if (saved) {
         const data = JSON.parse(saved)
-        excalidrawAPI.updateScene({
-          elements: data.elements || [],
-          appState: data.appState || {},
-        })
+        if (data.elements && data.appState) {
+          excalidrawAPI.updateScene({
+            elements: data.elements,
+            appState: data.appState,
+            files: data.files,
+          })
+        }
       }
     } catch (error) {
       console.error('Error loading saved data:', error)
