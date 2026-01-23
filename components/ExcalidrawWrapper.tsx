@@ -127,7 +127,7 @@ export default function ExcalidrawWrapper({
           canvasActions: {
             saveToActiveFile: false,
             loadScene: false,
-            export: true,
+            export: {},
             toggleTheme: true,
           },
         }}
